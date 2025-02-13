@@ -1,27 +1,40 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { config } from '../config/config';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { config } from "../config/config";
 
+// Define a custom interface for the AuthRequest
 export interface AuthRequest extends Request {
-  userId?: string;
+  userId?: string; // Ensure userId is optional
+}
+
+// Define the payload structure for TypeScript
+interface JwtPayload {
+  userId: string;
 }
 
 export const authMiddleware = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Unauthorized' });
+): void => {
+  const token = req.cookies?.token; // Extract token from cookies
+
+  if (!token) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
+    // Verify and decode the token
+    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+
+    // Assign userId to the request object
     req.userId = decoded.userId;
+
+    // Proceed to the next middleware or route handler
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ message: "Invalid token" });
+    return;
   }
 };
